@@ -52,7 +52,7 @@ nnoremap <silent> <localleader>q :call QuitRepl()<cr>
 " Close interpreter window when quitting from the editor window.
 augroup close_interp_on_exit
   autocmd!
-  " autocmd QuitPre * :call QuitRepl()
+  autocmd QuitPre * :call QuitRepl()
 augroup END
 ]]
 
@@ -72,7 +72,6 @@ function! ReplExists()
   " Determine whether tmux list-panes found the repl pane by
   " the return code from the function
   if !exists("t:repl_pane_id")
-    echom "pane_id_doesn't exist"
     return v:false
   endif
 
@@ -160,6 +159,6 @@ function! QuitRepl()
   if ReplExists()
     execute "!tmux kill-pane -t \\" . t:repl_pane_id
   endif
-  " call CleanupTab()
+  call CleanupTab()
 endfunction!
 ]]
