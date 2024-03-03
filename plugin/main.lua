@@ -20,7 +20,6 @@
 
 -- TODO: test on different types of REPLs
 -- TODO: convert to lua
--- TODO: fix RunCode when running from normal mode
 
 -- For help on % expanding to the current file name
 -- :help _%
@@ -85,9 +84,10 @@ function! RunCode(type)
   " Send the contents of buffer 0. Note this will fail if there's a newline
   " in the buffer
 
-  " TODO: for normal mode, this doesn't work the first time
+  " If RunCode is executed from normal mode, then make the current line
+  " the visual selection
   if a:type !=? 'V'
-    normal V
+    normal V:<cr>
   endif
 
   let t:paste_buffer = "~/.vim_tmux_buffer"
