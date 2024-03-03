@@ -21,7 +21,6 @@
 -- TODO: test on different types of REPLs
 -- TODO: convert to lua
 -- TODO: fix RunCode when running from normal mode
--- TODO: allow StartRepl to take no arguments and default to bash
 
 -- For help on % expanding to the current file name
 -- :help _%
@@ -38,7 +37,7 @@
 -- window_panes : number of panes in window
 
 vim.cmd [[
-command! -nargs=? StartRepl call StartRepl(<args>)
+command! -nargs=1 StartRepl call StartRepl(<args>)
 
 nnoremap <silent> <localleader>r :call RunCode("char")<cr>
 vnoremap <silent> <localleader>r :<c-u>call RunCode(visualmode())<cr>
@@ -118,7 +117,7 @@ vim.cmd [[
 function! StartRepl(cmd)
 
   if ReplExists()
-    echom "Repl already exists"
+    echom "Repl already open"
     return
   endif
 
