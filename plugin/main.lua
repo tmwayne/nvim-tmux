@@ -18,8 +18,9 @@
 -- limitations under the License.
 --
 
--- TODO: test on different types of REPLs
+-- TODO: add REPL specific hooks
 -- TODO: convert to lua
+-- TODO: ensure error message shows when REPL fails to start
 
 -- For help on % expanding to the current file name
 -- :help _%
@@ -118,7 +119,7 @@ function! GetHighestPaneId()
   " Take the id of the pane created, which will have largest ID
   " `list-panes` return the ids sorted not by pane id but by orientation,
   " sort we sort by pane ids to extract the max
-  let pane_ids=split(system(['tmux', 'list-panes', '-F#D']), '\n')
+  let pane_ids = split(system(['tmux', 'list-panes', '-F#D']), '\n')
   return sort(pane_ids, {a, b -> a[1:] - b[1:]})[-1]
 endfunction!
 ]]
@@ -127,33 +128,31 @@ vim.cmd [[
 function! StartRepl(cmd)
 
   if ReplExists()
-    echom "Repl already open"
+    echo "REPL already open"
     return
   endif
 
   " Start a terminal by running the provided command.
   let tmux_split = "silent !tmux split-window -d "
 
-  if IsWide()
-    let direction = "-h "
-  else
-    let direction = "-v "
-  endif
+  let direction = IsWide() ? "-h " : "-v "
 
-  let max_pane_id=GetHighestPaneId()
+  let max_pane_id = GetHighestPaneId()
 
   " Note that the command fails, this still sets v:shell_error to 0
   execute tmux_split . direction . a:cmd
 
-  let t:repl_pane_id=GetHighestPaneId()
+  let t:repl_pane_id = GetHighestPaneId()
   if max_pane_id == t:repl_pane_id
     unlet! t:repl_pane_id
+    " Explicitly redraw to ensure message is shown (see :help echo-redraw)
+    redraw | echom "Failed to start REPL"
     return
   endif
 
   " Set filetype for tab in case we accidently close the editor
-  let t:replcmd=a:cmd
-  let t:filetype=&ft
+  let t:replcmd = a:cmd
+  let t:filetype = &ft
 
   " Load any filetype specific hooks. These hooks are registered
   " as tab-scoped variables, allowing multiple tabs with interpreters
@@ -167,9 +166,11 @@ endfunction!
 
 vim.cmd [[
 function! QuitRepl()
-  if ReplExists()
-    execute "silent !tmux kill-pane -t \\" . t:repl_pane_id
+  if !ReplExists()
+    echom "No REPL is open"
+    return
   endif
+  execute "silent !tmux kill-pane -t \\" . t:repl_pane_id
   call CleanupTab()
 endfunction!
 ]]
