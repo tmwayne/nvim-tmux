@@ -145,17 +145,15 @@ function! StartRepl(cmd)
   " Note that the command fails, this still sets v:shell_error to 0
   execute tmux_split . direction . a:cmd
 
-  let new_max_pane_id=GetHighestPaneId()
-  if max_pane_id == new_max_pane_id
+  let t:repl_pane_id=GetHighestPaneId()
+  if max_pane_id == t:repl_pane_id
+    unlet! t:repl_pane_id
     return
   endif
-
-  let t:repl_pane_id=repl_pane_id
 
   " Set filetype for tab in case we accidently close the editor
   let t:replcmd=a:cmd
   let t:filetype=&ft
-  
 
   " Load any filetype specific hooks. These hooks are registered
   " as tab-scoped variables, allowing multiple tabs with interpreters
