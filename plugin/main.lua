@@ -18,10 +18,10 @@
 -- limitations under the License.
 --
 
--- TODO: make the commands silent
 -- TODO: test on different types of REPLs
 -- TODO: convert to lua
 -- TODO: fix RunCode when running from normal mode
+-- TODO: allow StartRepl to take no arguments and default to bash
 
 -- For help on % expanding to the current file name
 -- :help _%
@@ -93,8 +93,8 @@ function! RunCode(type)
 
   let t:paste_buffer = "~/.vim_tmux_buffer"
   execute ":'<,'> write! " . t:paste_buffer
-  execute "!tmux load-buffer -b vim " . t:paste_buffer
-  execute "!tmux paste-buffer -b vim -d -t \\" . t:repl_pane_id
+  execute "silent !tmux load-buffer -b vim " . t:paste_buffer
+  execute "silent !tmux paste-buffer -b vim -d -t \\" . t:repl_pane_id
 
 endfunction!
 ]]
@@ -123,7 +123,7 @@ function! StartRepl(cmd)
   endif
 
   " Start a terminal by running the provided command.
-  let tmux_split = "!tmux split-window -d "
+  let tmux_split = "silent !tmux split-window -d "
 
   if IsWide()
     let direction = "-h "
@@ -157,7 +157,7 @@ endfunction!
 vim.cmd [[
 function! QuitRepl()
   if ReplExists()
-    execute "!tmux kill-pane -t \\" . t:repl_pane_id
+    execute "silent !tmux kill-pane -t \\" . t:repl_pane_id
   endif
   call CleanupTab()
 endfunction!
