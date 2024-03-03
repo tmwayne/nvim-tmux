@@ -91,7 +91,7 @@ function! RunCode(type)
   endif
 
   let t:paste_buffer = "~/.vim_tmux_buffer"
-  execute ":'<,'> write! " . t:paste_buffer
+  execute ":silent '<,'> write! " . t:paste_buffer
   execute "silent !tmux load-buffer -b vim " . t:paste_buffer
   execute "silent !tmux paste-buffer -b vim -d -t \\" . t:repl_pane_id
 
@@ -114,6 +114,16 @@ endfunction!
 ]]
 
 vim.cmd [[
+function! GetHighestPaneId()
+  " Take the id of the pane created, which will have largest ID
+  " `list-panes` return the ids sorted not by pane id but by orientation,
+  " sort we sort by pane ids to extract the max
+  let pane_ids=split(system(['tmux', 'list-panes', '-F#D']), '\n')
+  return sort(pane_ids, {a, b -> a[1:] - b[1:]})[-1]
+endfunction!
+]]
+
+vim.cmd [[
 function! StartRepl(cmd)
 
   if ReplExists()
@@ -130,18 +140,22 @@ function! StartRepl(cmd)
     let direction = "-v "
   endif
 
-  let command = tmux_split . direction . a:cmd 
-  execute command
+  let max_pane_id=GetHighestPaneId()
+
+  " Note that the command fails, this still sets v:shell_error to 0
+  execute tmux_split . direction . a:cmd
+
+  let new_max_pane_id=GetHighestPaneId()
+  if max_pane_id == new_max_pane_id
+    return
+  endif
+
+  let t:repl_pane_id=repl_pane_id
 
   " Set filetype for tab in case we accidently close the editor
   let t:replcmd=a:cmd
   let t:filetype=&ft
-
-  " Take the id of the pane created, which will have largest ID
-  " `list-panes` return the ids sorted not by pane id but by orientation,
-  " sort we sort by pane ids to extract the max
-  let pane_ids=split(system(['tmux', 'list-panes', '-F#D']), '\n')
-  let t:repl_pane_id=sort(pane_ids, {a, b -> a[1:] - b[1:]})[-1]
+  
 
   " Load any filetype specific hooks. These hooks are registered
   " as tab-scoped variables, allowing multiple tabs with interpreters
