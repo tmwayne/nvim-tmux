@@ -93,8 +93,18 @@ function! RunCode(type)
 
   let t:paste_buffer = "~/.vim_tmux_buffer"
   execute ":silent '<,'> write! " . t:paste_buffer
+
+  if exists("t:SendKeysPreHook")
+    call t:SendKeysPreHook()
+  endif
+
   execute "silent !tmux load-buffer -b vim " . t:paste_buffer
   execute "silent !tmux paste-buffer -b vim -d -t \\" . t:repl_pane_id
+
+  if exists("t:SendKeysPostHook")
+    call t:SendKeysPostHook()
+  endif
+
 
 endfunction!
 ]]
