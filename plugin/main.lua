@@ -91,7 +91,7 @@ function! RunCode(type)
     normal V:<cr>
   endif
 
-  let t:paste_buffer = "~/.vim_tmux_buffer"
+  let t:paste_buffer = "~/.tmux_paste_buffer"
   execute ":silent '<,'> write! " . t:paste_buffer
 
   if exists("t:SendKeysPreHook")
