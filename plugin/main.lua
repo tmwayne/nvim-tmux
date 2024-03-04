@@ -91,6 +91,9 @@ function! RunCode(type)
     normal V:<cr>
   endif
 
+  " Ensure anything being paged is closed before running code
+  execute "silent !tmux send-keys -t\\" . t:repl_pane_id . " 'q' c-h"
+
   let t:paste_buffer = "~/.tmux_paste_buffer"
   execute ":silent '<,'> write! " . t:paste_buffer
 

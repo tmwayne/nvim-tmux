@@ -32,9 +32,6 @@ function! RegisterHooks()
 
     function! SendKeysPreHook_Python()
 
-      " Ensure anything being paged is closed before running code
-      execute "silent !tmux send-keys -t\\" . t:repl_pane_id . " 'q' c-h"
-
       call system("grep -qP '(\t|    )' " . t:paste_buffer)
       if v:shell_error
         let t:add_cpaste = v:false
