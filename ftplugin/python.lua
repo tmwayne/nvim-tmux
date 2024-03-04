@@ -32,15 +32,16 @@ function! RegisterHooks()
 
     function! SendKeysPreHook_Python()
       call system("grep -qP '(\t|    )' " . t:paste_buffer)
-      if !v:shell_error
-        let t:add_cpaste = v:true
-        execute "silent !tmux send-keys -t\\" . t:repl_pane_id . " '\\%cpaste -q' ENTER"
-      else
+      if v:shell_error
         let t:add_cpaste = v:false
+        return
       endif
+        
+      let t:add_cpaste = v:true
+      execute "silent !tmux send-keys -t\\" . t:repl_pane_id . " '\\%cpaste -q' ENTER"
 
       " There seems to be a race condition happening, which prevents
-      " %cpaste from working correctly. A 50ms wait fixes this.
+      " %cpaste from working correctly. A short wait fixes this.
       sleep 50m
     endfunction!
 
