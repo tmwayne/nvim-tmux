@@ -142,17 +142,11 @@ function! StartRepl(cmd)
     return
   endif
 
-  " In cases, the PATH that tmux uses for new sessions doesn't match the
-  " user's current PATH. To avoid issues resulting from this, expand the full
-  " path of the command before using it with split-window
-  let cmd_split = split(a:cmd, ' ')
-  let cmd_split[0] = trim(system("which " . cmd_split[0]))
+  call system("which " . split(a:cmd, ' ')[0])
   if v:shell_error
     echom "Path to REPL not found"
     return
   endif
-
-  let cmd_expanded = join(cmd_split, ' ')
 
   " Start a terminal by running the provided command.
   let tmux_split = "silent !tmux split-window -d "
@@ -162,7 +156,7 @@ function! StartRepl(cmd)
   let max_pane_id = GetHighestPaneId()
 
   " Note that the command fails, this still sets v:shell_error to 0
-  execute tmux_split . direction . cmd_expanded
+  execute tmux_split . direction . a:cmd
 
   let t:repl_pane_id = GetHighestPaneId()
   if max_pane_id == t:repl_pane_id
@@ -173,7 +167,7 @@ function! StartRepl(cmd)
   endif
 
   " Set filetype for tab in case we accidently close the editor
-  let t:replcmd = cmd_expanded
+  let t:replcmd = a:cmd
   let t:filetype = &ft
 
   " Load any filetype specific hooks. These hooks are registered
