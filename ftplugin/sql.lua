@@ -22,7 +22,7 @@ vim.cmd [[
 function! RegisterHooks()
 
     function! SendKeysPostHook_SQL()
-      execute "silent !tmux send-keys -t\\" . t:repl_pane_id . " '\\;' ENTER"
+      execute "silent !tmux send-keys -t\\" . t:repl_pane_id . " '\\;' c-m"
     endfunction!
 
     " Register hooks as tab-scoped variables

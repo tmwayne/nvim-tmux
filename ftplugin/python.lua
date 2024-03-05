@@ -39,7 +39,7 @@ function! RegisterHooks()
       endif
         
       let t:add_cpaste = v:true
-      execute "silent !tmux send-keys -t\\" . t:repl_pane_id . " '\\%cpaste -q' ENTER"
+      execute "silent !tmux send-keys -t\\" . t:repl_pane_id . " '\\%cpaste -q' c-m"
 
       " There seems to be a race condition happening, which prevents
       " %cpaste from working correctly. A short wait fixes this.
