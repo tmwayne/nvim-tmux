@@ -186,7 +186,6 @@ endfunction!
 vim.cmd [[
 function! QuitRepl()
   if !ReplExists()
-    echom "No REPL is open"
     return
   endif
   execute "silent !tmux kill-pane -t \\" . t:repl_pane_id
