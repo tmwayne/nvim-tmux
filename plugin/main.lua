@@ -18,10 +18,6 @@
 -- limitations under the License.
 --
 
--- TODO: add REPL specific hooks
--- TODO: convert to lua
--- TODO: ensure error message shows when REPL fails to start
-
 -- For help on % expanding to the current file name
 -- :help _%
 
@@ -36,159 +32,154 @@
 -- pane_title : Title of pane (can be set by application)
 -- window_panes : number of panes in window
 
-vim.cmd [[
-command! -nargs=1 StartRepl call StartRepl(<args>)
-
-nnoremap <silent> <localleader>r :call RunCode("char")<cr>
-vnoremap <silent> <localleader>r :<c-u>call RunCode(visualmode())<cr>
-
-" Press \q in the editor window to close the interpreter
-nnoremap <silent> <localleader>q :call QuitRepl()<cr>
-
-" Press <Ctrl-q> in the interpreter window to close the interpreter
-" tnoremap <silent> <c-q> <c-w>: :call QuitRepl()<cr>
-
-" Close interpreter window when quitting from the editor window.
-augroup close_interp_on_exit
-  autocmd!
-  autocmd QuitPre * :call QuitRepl()
-augroup END
-]]
-
-vim.cmd [[
-function! IsWide()
-  " Check the terminal dimensions.
-  " When Vim is in full screen, the interpreter window will be opened
-  " to the left or right, whichever is default.
-  " On the otherhand, when Vim is in half screen, 
-  " the interpreter window will be either above or below.
-  return (2.5 * &lines) < &columns
-endfunction!
-]]
-
-vim.cmd [[
-function! ReplExists()
-  " Determine whether tmux list-panes found the repl pane by
-  " the return code from the function
-  if !exists("t:repl_pane_id")
-    return v:false
-  endif
-
-  " This command fails if there is a space between `-t` and t:repl_pane_id
-  call system(['tmux', 'list-panes', '-t' . t:repl_pane_id])
-  return !v:shell_error
-endfunction!
-]]
-
-vim.cmd [[
-function! RunCode(type)
-  " Send the contents of buffer 0. Note this will fail if there's a newline
-  " in the buffer
-
-  " If RunCode is executed from normal mode, then make the current line
-  " the visual selection
-  if a:type !=? 'V'
-    normal V:<cr>
-  endif
-
-  " Ensure anything being paged is closed before running code
-  execute "silent !tmux send-keys -t\\" . t:repl_pane_id . " 'q' c-h"
-
-  let t:paste_buffer = "~/.tmux_paste_buffer"
-  execute ":silent '<,'> write! " . t:paste_buffer
-
-  if exists("t:SendKeysPreHook")
-    call t:SendKeysPreHook()
-  endif
-
-  execute "silent !tmux load-buffer -b vim " . t:paste_buffer
-  execute "silent !tmux paste-buffer -b vim -d -t \\" . t:repl_pane_id
-
-  if exists("t:SendKeysPostHook")
-    call t:SendKeysPostHook()
-  endif
+function IsWide ()
+  -- Check the terminal dimensions. when vim is in full screen, the 
+  -- interpreter window will be opened to the left or right, whichever is
+  -- default. on the otherhand, when vim is in half screen, the interpreter
+  -- window will be either above or below
+  return (2.5 * vim.opt.lines:get()) < vim.opt.columns:get()
+end
 
 
-endfunction!
-]]
+function ReplExists ()
+  -- Determine whether the pane exists by whether the tmux list-panes commands
+  -- runs successfully when called with the pane-id
+  if not vim.t.repl_pane_id then
+    return false
+  end
 
-vim.cmd [[
-function! CleanupTab()
-  " Delete tab-scoped variables
+  local cmd = {"tmux", "list-panes", "-t", vim.t.repl_pane_id}
+  return vim.system(cmd):wait()["code"] == 0
+end
 
-  unlet! t:filetype t:replcmd t:repl_pane_id
-  if exists("t:SendKeysPreHook")
-    unlet! t:SendKeysPreHook
-  endif
-  
-  if exists("t:SendKeysPostHook")
-    unlet! t:SendKeysPostHook
-  endif
-endfunction!
-]]
 
-vim.cmd [[
-function! GetHighestPaneId()
-  " Take the id of the pane created, which will have largest ID
-  " `list-panes` return the ids sorted not by pane id but by orientation,
-  " sort we sort by pane ids to extract the max
-  let pane_ids = split(system(['tmux', 'list-panes', '-F#D']), '\n')
-  return sort(pane_ids, {a, b -> a[1:] - b[1:]})[-1]
-endfunction!
-]]
+function GetHighestPaneId ()
+  -- Return the pane id of the last pane create, which is the highest
+  local cmd = {"tmux", "list-panes", "-F#D"}
+  local stdout = vim.system(cmd, {text=true}):wait()["stdout"]
+  local pane_ids = vim.split(vim.trim(stdout), "\n")
 
-vim.cmd [[
-function! StartRepl(cmd)
+  -- Remove the leading % and cast to number
+  local function id2number (id) return tonumber(string.sub(id, 2, -1)) end
+  table.sort(pane_ids, function(a, b) return id2number(a) < id2number(b) end)
 
-  if ReplExists()
-    echo "REPL already open"
+  return pane_ids[#pane_ids]
+end
+
+
+function RunCode (mode)
+  -- if normal mode, visually select the current line
+  -- TODO: should we select the current paragraph instead?
+  if mode == "n" then
+    vim.cmd.normal("V:<cr>")
+  end
+
+  -- ensure anything being paged is closed before running code
+  os.execute("tmux send-keys -t\\" .. vim.t.repl_pane_id .. " 'q' c-h")
+
+  vim.t.paste_buffer = "~/.tmux_paste_buffer"
+  vim.api.nvim_exec2("silent '<,'> write! " .. vim.t.paste_buffer, {})
+
+  -- TODO: figure out to translate this to Lua
+  if vim.fn.exists("t:SendKeysPreHook") == 1 then
+    vim.api.nvim_exec2("call t:SendKeysPreHook()", {})
+  end
+
+  os.execute("tmux load-buffer -b vim " .. vim.t.paste_buffer)
+  os.execute("tmux paste-buffer -b vim -d -t \\" .. vim.t.repl_pane_id)
+
+  if vim.fn.exists("t:SendKeysPostHook") == 1 then
+    vim.api.nvim_exec2("call t:SendKeysPostHook()", {})
+  end
+
+end
+
+
+function StartRepl (opts)
+
+  local cmd = opts.fargs[1]
+
+  if ReplExists() then
+    vim.notify("REPL already open")
     return
-  endif
+  end
 
-  call system("which " . split(a:cmd, ' ')[0])
-  if v:shell_error
-    echom "Path to REPL not found"
+  local tmux_split = "tmux split-window -d "
+  local direction = IsWide() and "-h " or "-v "
+
+  local max_pane_id = GetHighestPaneId()
+
+  -- TODO: get full path of command
+  -- call system("which " . split(a:cmd, ' ')[0])
+  -- if v:shell_error
+  --   echom "Path to REPL not found"
+  --   return
+  -- endif
+
+  os.execute(tmux_split .. direction .. cmd)
+
+  -- check that we opened a new pane
+  vim.t.repl_pane_id = GetHighestPaneId()
+  if max_pane_id == vim.t.repl_pane_id then
+    vim.t.repl_pane_id = nil
+    -- vim.cmd.redraw()
+    -- TODO: ensure that the message actually shows
+    vim.notify("Failed to start REPL")
     return
-  endif
+  end
 
-  " Start a terminal by running the provided command.
-  let tmux_split = "silent !tmux split-window -d "
+  -- set filetype for tab in case editor is accidentally closed
+  vim.t.replcmd = cmd
+  vim.t.filetype = vim.opt.ft:get()
 
-  let direction = IsWide() ? "-h " : "-v "
+  -- load any filetype specific hook. these hooks are registered
+  -- as tab-scored variables, allowing multiple tabs with interpreters
+  -- to be opened without the hooks interferring with each other
+  if vim.fn.exists("*RegisterHooks") == 1 then
+    vim.fn.RegisterHooks()
+  end
 
-  let max_pane_id = GetHighestPaneId()
+end
 
-  " Note that the command fails, this still sets v:shell_error to 0
-  execute tmux_split . direction . a:cmd
 
-  let t:repl_pane_id = GetHighestPaneId()
-  if max_pane_id == t:repl_pane_id
-    unlet! t:repl_pane_id
-    " Explicitly redraw to ensure message is shown (see :help echo-redraw)
-    redraw | echom "Failed to start REPL"
+function CleanupTab()
+  -- Delete tab-scoped variables
+  vim.t.filetype = nil
+  vim.t.replcmd = nil
+  vim.t.repl_pane_id = nil
+  vim.t.SendKeysPreHook = nil
+  vim.t.SendKeysPostHook = nil
+end
+
+
+function QuitRepl()
+  if not ReplExists() then
+    -- vim.notify("No REPL is open")
     return
-  endif
+  end
+  os.execute("tmux kill-pane -t " .. vim.t.repl_pane_id)
+  CleanupTab()
+end
 
-  " Set filetype for tab in case we accidently close the editor
-  let t:replcmd = a:cmd
-  let t:filetype = &ft
 
-  " Load any filetype specific hooks. These hooks are registered
-  " as tab-scoped variables, allowing multiple tabs with interpreters
-  " to be opened without the hooks interferring with each other
-  if exists("*RegisterHooks")
-    call RegisterHooks()
-  endif
+-- :help lua-guide-commands-create
+vim.api.nvim_create_user_command(
+  'StartRepl', 
+  function(opts) StartRepl(opts) end,
+  { nargs = 1 }
+)
 
-endfunction!
-]]
+vim.keymap.set('n', '<localleader>r', ':call v:lua.RunCode("n")<cr>', {silent=true})
+vim.keymap.set('v', '<localleader>r', ':<c-u>call v:lua.RunCode(visualmode())<cr>',
+  {silent=true})
 
-vim.cmd [[
-function! QuitRepl()
-  if !ReplExists()
-    return
-  endif
-  execute "silent !tmux kill-pane -t \\" . t:repl_pane_id
-  call CleanupTab()
-endfunction!
-]]
+-- Press \q in the editor window to close the interpreter
+-- vim.keymap.set('n', '<localleader>q', ':call QuitRepl()<cr>', {silent=true})
+vim.keymap.set('n', '<localleader>q', QuitRepl, {silent=true})
+
+-- Close interpreter window when quitting from the editor window
+vim.api.nvim_create_augroup("close_interp_on_exit", {})
+vim.api.nvim_create_autocmd({"QuitPre"}, {
+  group = "close_interp_on_exit", 
+  callback = function (ev) QuitRepl() end
+})
