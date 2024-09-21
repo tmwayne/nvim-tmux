@@ -21,41 +21,42 @@
 -- TODO: refine logic for sending cpaste
 -- TODO: reduce scope of add_cpaste variable to script (if possible)
 
-vim.cmd [[
-function! RegisterHooks()
+function RegisterHooks ()
 
-  " If the interpreter is ipython then we need to wrap
-  " multi-line code blocks with a special magic function so that
-  " ipython interprets it correctly. We only need to do this if
-  " it's a multi-line statement with at least indented one line.
-  if stridx(t:replcmd, "ipython") >= 0
+  -- if the interpreter is ipython, then we need to wrap multi-line code
+  -- blocks with a special function so that ipython interprets it correctly.
+  -- we only need to do this if it's a multi-line statement with at least
+  -- one indented line
+  if string.find(vim.t.replcmd, "ipython") then
 
-    function! SendKeysPreHook_Python()
+    function SendKeysPreHook_Python ()
 
-      call system("grep -qP '(\t|    )' " . t:paste_buffer)
-      if v:shell_error
-        let t:add_cpaste = v:false
+      local has_multiline = "grep -qP '(\t|    )' " .. vim.t.paste_buffer
+      if os.execute(has_multiline) ~= 0 then
+        vim.t.add_cpaste = false
         return
-      endif
-        
-      let t:add_cpaste = v:true
-      execute "silent !tmux send-keys -t\\" . t:repl_pane_id . " '\\%cpaste -q' c-m"
+      end
 
-      " There seems to be a race condition happening, which prevents
-      " %cpaste from working correctly. A short wait fixes this.
-      sleep 50m
-    endfunction!
+      vim.t.add_cpaste = true
+      os.execute("tmux send-keys -t " .. vim.t.repl_pane_id .. " '%cpaste -q' c-m")
 
-    function! SendKeysPostHook_Python()
-      if t:add_cpaste
-        execute "silent !tmux send-keys -t\\" . t:repl_pane_id . " c-d"
-      endif
-    endfunction!
+      -- there seems to be a race condition happening, which prevents %cpaste
+      -- from working correctly. a short sleep fixes this
+      vim.cmd.sleep("50m")
+      
+    end
 
-    " Register hooks as tab-scoped variables
-    let t:SendKeysPreHook = function("SendKeysPreHook_Python")
-    let t:SendKeysPostHook = function("SendKeysPostHook_Python")
+    -- send a final <cr>
+    function SendKeysPostHook_Python ()
+      if vim.t.add_cpaste then
+        os.execute("tmux send-keys -t " .. vim.t.repl_pane_id .. " c-d")
+      end
+    end
 
-  endif
-endfunction!
-]]
+    -- register hooks as tab-scoped variables
+    vim.t.SendKeysPreHook = SendKeysPreHook_Python
+    vim.t.SendKeysPostHook = SendKeysPostHook_Python
+
+  end
+
+end

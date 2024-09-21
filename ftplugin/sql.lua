@@ -18,15 +18,26 @@
 -- limitations under the License.
 --
 
-vim.cmd [[
-function! RegisterHooks()
+function RegisterHooks ()
 
-    function! SendKeysPostHook_SQL()
-      execute "silent !tmux send-keys -t\\" . t:repl_pane_id . " '\\;' c-m"
-    endfunction!
+  function SendKeysPostHook_SQL ()
+    -- TODO: check whether the semi-colon needs to be escaped
+    os.execute("tmux send-keys -t " .. t:repl_pane_id .. " '\\;' c-m"
+  end
 
-    " Register hooks as tab-scoped variables
-    let t:SendKeysPostHook = function("SendKeysPostHook_SQL")
+  -- register hook as tab-scoped variable
+  vim.t.SendKeysPostHook = SendKeysPostHook_SQL
+end
 
-endfunction!
-]]
+-- vim.cmd [[
+-- function! RegisterHooks()
+--
+--     function! SendKeysPostHook_SQL()
+--       execute "silent !tmux send-keys -t\\" . t:repl_pane_id . " '\\;' c-m"
+--     endfunction!
+--
+--     " Register hooks as tab-scoped variables
+--     let t:SendKeysPostHook = function("SendKeysPostHook_SQL")
+--
+-- endfunction!
+-- ]]

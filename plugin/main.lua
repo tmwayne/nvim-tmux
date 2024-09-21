@@ -75,7 +75,7 @@ function RunCode (mode)
   end
 
   -- ensure anything being paged is closed before running code
-  os.execute("tmux send-keys -t\\" .. vim.t.repl_pane_id .. " 'q' c-h")
+  os.execute("tmux send-keys -t " .. vim.t.repl_pane_id .. " 'q' c-h")
 
   vim.t.paste_buffer = "~/.tmux_paste_buffer"
   vim.api.nvim_exec2("silent '<,'> write! " .. vim.t.paste_buffer, {})
@@ -86,7 +86,7 @@ function RunCode (mode)
   end
 
   os.execute("tmux load-buffer -b vim " .. vim.t.paste_buffer)
-  os.execute("tmux paste-buffer -b vim -d -t \\" .. vim.t.repl_pane_id)
+  os.execute("tmux paste-buffer -b vim -d -t " .. vim.t.repl_pane_id)
 
   if vim.fn.exists("t:SendKeysPostHook") == 1 then
     vim.api.nvim_exec2("call t:SendKeysPostHook()", {})
@@ -135,8 +135,8 @@ function StartRepl (opts)
   -- load any filetype specific hook. these hooks are registered
   -- as tab-scored variables, allowing multiple tabs with interpreters
   -- to be opened without the hooks interferring with each other
-  if vim.fn.exists("*RegisterHooks") == 1 then
-    vim.fn.RegisterHooks()
+  if _G["RegisterHooks"] then
+    RegisterHooks()
   end
 
 end
@@ -153,12 +153,10 @@ end
 
 
 function QuitRepl()
-  if not ReplExists() then
-    -- vim.notify("No REPL is open")
-    return
+  if ReplExists() then
+    os.execute("tmux kill-pane -t " .. vim.t.repl_pane_id)
+    CleanupTab()
   end
-  os.execute("tmux kill-pane -t " .. vim.t.repl_pane_id)
-  CleanupTab()
 end
 
 
